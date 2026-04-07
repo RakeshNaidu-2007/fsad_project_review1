@@ -30,24 +30,24 @@ const features = [
         title: 'Admin Controls',
         desc: 'Create and manage courses, track enrollments, and monitor student progress in real-time.',
         gradient: 'var(--gradient-purple)',
-        link: '/admin',
-        cta: 'Go to Admin',
+        link: '/admin-login',
+        cta: 'Login as Admin',
     },
     {
         icon: '🎓',
         title: 'Student Hub',
         desc: 'Enroll in courses, submit assignments, and track your learning journey effortlessly.',
         gradient: 'var(--gradient-blue)',
-        link: '/student',
-        cta: 'Go to Student',
+        link: '/student-login',
+        cta: 'Login as Student',
     },
     {
         icon: '✏️',
-        title: 'Assignments',
-        desc: 'Submit assignments for enrolled courses and keep your progress up to date.',
+        title: 'About Us',
+        desc: 'Learn more about our platform and how we are transforming online education.',
         gradient: 'var(--gradient-green)',
-        link: '/submit-assignment',
-        cta: 'Submit Now',
+        link: '/courses',
+        cta: 'Browse Courses',
     },
 ];
 
@@ -74,10 +74,10 @@ const Home = ({ courses }) => {
                         and for students to learn, grow, and achieve their goals.
                     </p>
                     <div className="hero-actions">
-                        <Link to="/admin" className="btn btn-primary hero-btn">
-                            🛡️ Admin Dashboard
+                        <Link to="/admin-login" className="btn btn-primary hero-btn">
+                            🛡️ Admin Portal
                         </Link>
-                        <Link to="/student" className="btn btn-accent hero-btn">
+                        <Link to="/student-login" className="btn btn-accent hero-btn">
                             🎓 Student Portal
                         </Link>
                     </div>

@@ -1,6 +1,10 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginLanding from './pages/LoginLanding';
+import AdminLogin from './pages/AdminLogin';
+import StudentLogin from './pages/StudentLogin';
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -8,61 +12,162 @@ import CreateCourse from './pages/CreateCourse';
 import CourseList from './pages/CourseList';
 import EnrollCourse from './pages/EnrollCourse';
 import AssignmentSubmit from './pages/AssignmentSubmit';
+import { AuthProvider } from './context/AuthContext';
+import { activityApi } from './api/client';
 import './App.css';
 
-const initialCourses = [
-  {
-    id: 1,
-    title: 'React for Beginners',
-    description: 'Learn the fundamentals of React.js, hooks, and component-based architecture.',
-    instructor: 'Dr. Sarah Collins',
-    duration: '6 Weeks',
-    level: 'Beginner',
-    category: 'Web Development',
-    image: '⚛️',
-  },
-  {
-    id: 2,
-    title: 'Advanced JavaScript',
-    description: 'Deep dive into closures, async/await, prototypes, and modern ES6+ features.',
-    instructor: 'Prof. Mark Evans',
-    duration: '8 Weeks',
-    level: 'Advanced',
-    category: 'Programming',
-    image: '🟨',
-  },
-  {
-    id: 3,
-    title: 'UI/UX Design Principles',
-    description: 'Master user interface design, wireframing, and creating stunning user experiences.',
-    instructor: 'Ms. Priya Sharma',
-    duration: '5 Weeks',
-    level: 'Intermediate',
-    category: 'Design',
-    image: '🎨',
-  },
-  {
-    id: 4,
-    title: 'Python Data Science',
-    description: 'Explore data analysis, visualization, and machine learning using Python & Pandas.',
-    instructor: 'Dr. Alan Wright',
-    duration: '10 Weeks',
-    level: 'Intermediate',
-    category: 'Data Science',
-    image: '🐍',
-  },
-];
+function AppContent({ 
+  courses, 
+  enrolledCourses, 
+  setEnrolledCourses, 
+  submissions, 
+  setSubmissions, 
+  addCourse, 
+  deleteCourse, 
+  enrollCourse, 
+  unenrollCourse, 
+  addSubmission, 
+  loadingCourses 
+}) {
+  const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, [location]);
+
+  if (loadingCourses && (location.pathname !== '/' && location.pathname !== '/admin-login' && location.pathname !== '/student-login')) {
+    return (
+      <div className="app-wrapper">
+        <div className="loading-container">
+          <p>Loading activities...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const noNavbarRoutes = ['/', '/admin-login', '/student-login'];
+  const shouldShowNavbar = isAuthenticated && !noNavbarRoutes.includes(location.pathname);
+
+  return (
+    <div className="app-wrapper">
+      {shouldShowNavbar && <Navbar />}
+      <main className={shouldShowNavbar ? 'main-content' : 'main-content-full'}>
+        <Routes>
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/student-login" element={<StudentLogin />} />
+          <Route path="/" element={<LoginLanding />} />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="ADMIN">
+                <AdminDashboard
+                  courses={courses}
+                  deleteCourse={deleteCourse}
+                  enrolledCourses={enrolledCourses}
+                  submissions={submissions}
+                />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/student"
+            element={
+              <ProtectedRoute role="STUDENT">
+                <StudentDashboard
+                  courses={courses}
+                  enrolledCourses={enrolledCourses}
+                  enrollCourse={enrollCourse}
+                  unenrollCourse={unenrollCourse}
+                  submissions={submissions}
+                />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home courses={courses} enrollCourse={enrollCourse} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-course"
+            element={
+              <ProtectedRoute role="ADMIN">
+                <CreateCourse addCourse={addCourse} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/courses"
+            element={
+              <ProtectedRoute>
+                <CourseList courses={courses} enrollCourse={enrollCourse} enrolledCourses={enrolledCourses} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/enroll"
+            element={
+              <ProtectedRoute>
+                <EnrollCourse courses={courses} enrollCourse={enrollCourse} enrolledCourses={enrolledCourses} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/submit-assignment"
+            element={
+              <ProtectedRoute role="STUDENT">
+                <AssignmentSubmit enrolledCourses={enrolledCourses} addSubmission={addSubmission} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 function App() {
-  const [courses, setCourses] = useState(initialCourses);
+  const [courses, setCourses] = useState([]);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [submissions, setSubmissions] = useState([]);
-  const [nextId, setNextId] = useState(5);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+
+  // Fetch activities from backend on app mount
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        setLoadingCourses(true);
+        const data = await activityApi.getAllActivities();
+        const activities = Array.isArray(data) ? data : data.data || [];
+        setCourses(activities);
+      } catch (error) {
+        console.error('Failed to fetch activities:', error);
+        setCourses([]);
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
 
   const addCourse = (course) => {
-    const newCourse = { ...course, id: nextId };
+    const newCourse = { ...course, id: course.id || Date.now() };
     setCourses((prev) => [...prev, newCourse]);
-    setNextId((prev) => prev + 1);
   };
 
   const deleteCourse = (id) => {
@@ -86,50 +191,21 @@ function App() {
 
   return (
     <Router>
-      <div className="app-wrapper">
-        <Navbar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home courses={courses} enrollCourse={enrollCourse} />} />
-            <Route
-              path="/admin"
-              element={
-                <AdminDashboard
-                  courses={courses}
-                  deleteCourse={deleteCourse}
-                  enrolledCourses={enrolledCourses}
-                  submissions={submissions}
-                />
-              }
-            />
-            <Route
-              path="/student"
-              element={
-                <StudentDashboard
-                  courses={courses}
-                  enrolledCourses={enrolledCourses}
-                  enrollCourse={enrollCourse}
-                  unenrollCourse={unenrollCourse}
-                  submissions={submissions}
-                />
-              }
-            />
-            <Route path="/create-course" element={<CreateCourse addCourse={addCourse} />} />
-            <Route
-              path="/courses"
-              element={<CourseList courses={courses} enrollCourse={enrollCourse} enrolledCourses={enrolledCourses} />}
-            />
-            <Route
-              path="/enroll"
-              element={<EnrollCourse courses={courses} enrollCourse={enrollCourse} enrolledCourses={enrolledCourses} />}
-            />
-            <Route
-              path="/submit-assignment"
-              element={<AssignmentSubmit enrolledCourses={enrolledCourses} addSubmission={addSubmission} />}
-            />
-          </Routes>
-        </main>
-      </div>
+      <AuthProvider>
+        <AppContent
+          courses={courses}
+          enrolledCourses={enrolledCourses}
+          setEnrolledCourses={setEnrolledCourses}
+          submissions={submissions}
+          setSubmissions={setSubmissions}
+          addCourse={addCourse}
+          deleteCourse={deleteCourse}
+          enrollCourse={enrollCourse}
+          unenrollCourse={unenrollCourse}
+          addSubmission={addSubmission}
+          loadingCourses={loadingCourses}
+        />
+      </AuthProvider>
     </Router>
   );
 }
