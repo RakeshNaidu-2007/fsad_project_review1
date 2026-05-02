@@ -37,7 +37,7 @@ function AppContent({
     setIsAuthenticated(!!token);
   }, [location]);
 
-  if (loadingCourses && (location.pathname !== '/' && location.pathname !== '/admin-login' && location.pathname !== '/student-login')) {
+  if (loadingCourses && (location.pathname !== '/' && location.pathname !== '/admin-login' && location.pathname !== '/student-login' && location.pathname !== '/admin' && location.pathname !== '/student')) {
     return (
       <div className="app-wrapper">
         <div className="loading-container">
